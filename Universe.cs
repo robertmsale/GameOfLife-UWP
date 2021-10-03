@@ -101,7 +101,20 @@ namespace GameOfLife_UWP
         /// <param name="x">X coordinate</param>
         /// <param name="y">Y coordinate</param>
         /// <returns>State of cell at (x, y)</returns>
-        public bool this[int x, int y] { get { return universe[x, y]; } }
+        public bool this[int x, int y] { 
+            get { 
+                return universe[x, y]; 
+            } set { 
+                if (isToroidal)
+                {
+                    universe[x % (XLen - 1), y % (YLen - 1)] = value;
+                } else
+                {
+                    if (x >= XLen || y >= YLen || x < 0 || y < 0) return;
+                    universe[x, y] = value;
+                }
+            } 
+        }
         public void ClickCell(int x, int y)
         {
             deltaT.Last().ToggleInstruction(x, y);
@@ -233,6 +246,81 @@ namespace GameOfLife_UWP
                 }
             }
             GoTo(TotalGenerations - 1);
+        }
+        public async void SaveToPlainText(Windows.Storage.Pickers.FileSavePicker picker, string name, string desc)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("!Name: " + name + "\n!");
+            foreach (string str in desc.Split('\n'))
+            {
+                sb.Append(str + ' ');
+            }
+            sb.Append("\n");
+            for (int y = 0; y < YLen; y++)
+            {
+                for (int x = 0; x < XLen; x++)
+                {
+                    if (universe[x, y]) sb.Append('O');
+                    else sb.Append('.');
+                }
+                sb.Append('\n');
+            }
+            Windows.Storage.StorageFile file = await picker.PickSaveFileAsync();
+            if (file != null)
+            {
+                Windows.Storage.CachedFileManager.DeferUpdates(file);
+                await Windows.Storage.FileIO.WriteTextAsync(file, sb.ToString());
+                Windows.Storage.Provider.FileUpdateStatus status = await Windows.Storage.CachedFileManager.CompleteUpdatesAsync(file);
+            }
+        }
+        public async Task<Tuple<string, string>> LoadFromFile(Windows.Storage.Pickers.FileOpenPicker picker, bool isImport)
+        {
+            List<string> lines = new List<string>();
+            string name = "";
+            string desc = "";
+            Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
+            if (file == null) return null;
+            Windows.Storage.CachedFileManager.DeferUpdates(file);
+            foreach(string s in await Windows.Storage.FileIO.ReadLinesAsync(file))
+            {
+                lines.Add(s);
+            }
+            await Windows.Storage.CachedFileManager.CompleteUpdatesAsync(file);
+            while (true)
+            {
+                if (lines.Count == 0) return null;
+                if (lines[0].StartsWith("!Name: "))
+                {
+                    name = lines[0].Substring(7);
+                    lines.RemoveAt(0);
+                }
+                else if (lines[0].StartsWith("!"))
+                {
+                    desc += lines[0].Substring(1) + " ";
+                    lines.RemoveAt(0);
+                }
+                else break;
+            }
+            int inx = lines[0].Length;
+            int iny = lines.Count;
+
+            if (!isImport)
+            {
+                universe = new bool[inx, iny];
+            }
+
+            for (int y = 0; y < iny; y++)
+            {
+                for (int x = 0; x < inx; x++)
+                {
+                    try
+                    {
+                        if (lines[y][x] == 'O') universe[x, y] = true;
+                        else universe[x, y] = false;
+                    } catch (Exception) { }
+                }
+            }
+            return new Tuple<string, string>(name, desc);
         }
         /// <summary>
         /// Serialize entire universe to file
