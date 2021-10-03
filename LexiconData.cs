@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace GameOfLife_UWP
 {
+    /// <summary>
+    /// JSON structure of GoL Lexicon HTTP response payload (ended up not using it but kept for clarity)
+    /// </summary>
     class LexiconData
     {
         public string name { get; set; }

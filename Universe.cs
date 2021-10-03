@@ -15,10 +15,32 @@ namespace GameOfLife_UWP
     /// </summary>
     public class Universe
     {
+        #region Properties and Fields
         /// <summary>
         /// 2D Array of cells. I'd like to note that it took every fiber of my being to not make this an array of bitsets to save on horizontal memory.
         /// </summary>
         private bool[,] universe;
+        /// <summary>
+        /// Property which tracks the neighbor count for each cell.
+        /// </summary>
+        public byte[,] neighborCount 
+        { 
+            get
+            {
+                byte[,] cnt = new byte[XLen, YLen];
+                CountNeighbors cn = CountNeighborsFinite;
+                if (IsToroidal) cn = CountNeighborsToroidal;
+                for(int y = 0; y < YLen; y++)
+                {
+                    for (int x = 0; x < XLen; x++)
+                    {
+                        // safe cast because there is no chance there are more than 6 neighbors
+                        cnt[x, y] = (byte)cn(x, y);
+                    }
+                }
+                return cnt;
+            }
+        }
         /// <summary>
         /// Convenience method for acquiring the max X axis
         /// </summary>
@@ -69,7 +91,8 @@ namespace GameOfLife_UWP
             get { return isToroidal; }
             private set { isToroidal = value; }
         }
-
+        #endregion
+        #region Constructors
         /// <summary>
         /// Shorthand constructor for building a square grid
         /// </summary>
@@ -101,29 +124,72 @@ namespace GameOfLife_UWP
         /// <param name="x">X coordinate</param>
         /// <param name="y">Y coordinate</param>
         /// <returns>State of cell at (x, y)</returns>
+        #endregion
+        #region Utility Methods
+        /// <summary>
+        /// This indexer allows safe access to the underlying boolean array
+        /// </summary>
         public bool this[int x, int y] { 
             get { 
                 return universe[x, y]; 
             } set { 
                 if (isToroidal)
                 {
+                    // Allow imports to toroidal universe to wrap around grid
                     universe[x % (XLen - 1), y % (YLen - 1)] = value;
                 } else
                 {
+                    // Otherwise Cull extraneous cells on import
                     if (x >= XLen || y >= YLen || x < 0 || y < 0) return;
                     universe[x, y] = value;
                 }
-            } 
+            }
         }
-        public void ClickCell(int x, int y)
+
+        /// <summary>
+        /// Use diff map to traverse the universe over time
+        /// </summary>
+        /// <param name="generation">the specific point in time to travel to</param>
+        public void GoTo(int generation)
         {
-            deltaT.Last().ToggleInstruction(x, y);
-            GoTo(TotalGenerations - 1);
+            int direction = Current <= generation ? 1 : -1;
+            // Prevent user input from throwing index out of range exception
+            Math.Clamp(generation, 0, TotalGenerations - 1);
+            while (Current != generation)
+            {
+                // use iterator to safely guarantee proper order of execution
+                foreach (DiffMapInstruction i in deltaT[Current].iterator)
+                {
+                    // Depending on whether user is going back or forward, commit or revert that cell
+                    bool setTo = direction == -1 ? !i.WasBirth : i.WasBirth;
+                    universe[i.X, i.Y] = setTo;
+                }
+                Current += direction;
+            }
+            // If going backwards, no need to go any further
+            if (direction == -1) return;
+            // If going forward, must commit all instructions at current index
+            foreach (DiffMapInstruction i in deltaT[current].iterator)
+            {
+                universe[i.X, i.Y] = i.WasBirth;
+            }
         }
         /// <summary>
         /// Clears the diff map
         /// </summary>
         public void ClearDiffMap() { deltaT = new List<DiffMap>(); deltaT.Add(new DiffMap()); Current = 0; }
+        #endregion
+        #region Rubric Compliant Methods
+        /// <summary>
+        /// If clicking a cell, toggle that cell then fast forward to last generation
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        public void ClickCell(int x, int y)
+        {
+            deltaT.Last().ToggleInstruction(x, y);
+            GoTo(TotalGenerations - 1);
+        }
         /// <summary>
         /// Clears and generates a Random universe based on a seed
         /// </summary>
@@ -142,30 +208,6 @@ namespace GameOfLife_UWP
                 }
             }
             GoTo(0);
-        }
-        /// <summary>
-        /// Use diff map to traverse the universe over time
-        /// </summary>
-        /// <param name="generation">the specific point in time to travel to</param>
-        public void GoTo(int generation)
-        {
-            int direction = Current <= generation ? 1 : -1;
-            if (generation < 0) generation = 0;
-            if (generation >= TotalGenerations) generation = TotalGenerations - 1;
-            while (Current != generation)
-            {
-                foreach (DiffMapInstruction i in deltaT[Current].iterator)
-                {
-                    bool setTo = direction == -1 ? !i.WasBirth : i.WasBirth;
-                    universe[i.X, i.Y] = setTo;
-                }
-                Current += direction;
-            }
-            if (direction == -1) return;
-            foreach (DiffMapInstruction i in deltaT[current].iterator)
-            {
-                universe[i.X, i.Y] = i.WasBirth;
-            }
         }
         /// <summary>
         /// Count neighbors, allowing cells to fall off the edge of the grid
@@ -273,19 +315,10 @@ namespace GameOfLife_UWP
                 Windows.Storage.Provider.FileUpdateStatus status = await Windows.Storage.CachedFileManager.CompleteUpdatesAsync(file);
             }
         }
-        public async Task<Tuple<string, string>> LoadFromFile(Windows.Storage.Pickers.FileOpenPicker picker, bool isImport)
+        public Tuple<string, string> LoadFromFile(List<string> lines, bool isImport)
         {
-            List<string> lines = new List<string>();
             string name = "";
             string desc = "";
-            Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
-            if (file == null) return null;
-            Windows.Storage.CachedFileManager.DeferUpdates(file);
-            foreach(string s in await Windows.Storage.FileIO.ReadLinesAsync(file))
-            {
-                lines.Add(s);
-            }
-            await Windows.Storage.CachedFileManager.CompleteUpdatesAsync(file);
             while (true)
             {
                 if (lines.Count == 0) return null;
@@ -322,6 +355,8 @@ namespace GameOfLife_UWP
             }
             return new Tuple<string, string>(name, desc);
         }
+        #endregion
+        #region Rubric Uncompliant Methods
         /// <summary>
         /// Serialize entire universe to file
         /// </summary>
@@ -368,8 +403,10 @@ namespace GameOfLife_UWP
             reader.Close();
             return u;
         }
+        #endregion
     }
 
+    #region Utility Classes
     /// <summary>
     /// Rather than storing each generation in their own array so you can "rewind" your game, create a diff map which stores changes to cells
     /// over time and group them by generation, thereby saving memory at the cost of slightly higher CPU cycles.
@@ -452,4 +489,5 @@ namespace GameOfLife_UWP
         /// <param name="wasBirth">Did the cell become alive or did it die?</param>
         public void Commit(int x, int y, bool wasBirth) { instructions.Add(new DiffMapInstruction(x, y, wasBirth)); }
     }
+    #endregion
 }

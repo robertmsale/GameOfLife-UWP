@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace GameOfLife_UWP
 {
+    /// <summary>
+    /// This class is a wrapper that allows for certain data bindings to work well with UWP/XAML
+    /// </summary>
     public class ViewModel
     {
         private static double _CellSize = 48.0f;

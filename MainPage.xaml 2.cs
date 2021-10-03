@@ -35,41 +35,28 @@ namespace GameOfLife_UWP
     /// </summary>
     public sealed partial class MainPage
     {
-        #region Properties and Fields
-        /// <summary>
-        /// The viewmodel to go with the view and model!
-        /// </summary>
         public ViewModel ViewModel;
         HttpClient client = new HttpClient();
-        /// <summary>
-        /// Property which determines grid width
-        /// </summary>
         public double GridWidth { get; set; }
-        /// <summary>
-        /// Property which determines grid height
-        /// </summary>
         public double GridHeight{ get; set; }
-        /// <summary>
-        /// Because DispatchTimer doesn't have an "Enabled" flag, must keep track of that externally.
-        /// </summary>
         public bool timerRunning = false;
-        /// <summary>
-        /// String which toggles the Play/Pause symbol
-        /// </summary>
-        public string PlayPause
-        {
-            get => timerRunning ? "Pause" : "Play";
-        }
-
         public string uName = "New Universe";
         public string uDescription = "New Universe";
         public int Speed = 100000;
         public string FilePath = "";
-        /// <summary>
-        /// UWP uses a different type of timer which handles asynchronous events more elegantly with multi-threaded UI
-        /// </summary>
+        public SolidColorBrush modalTop 
+        { 
+            get
+            {
+                Color c = new Color { R=126, G=126, B=126, A=50 };
+                return new SolidColorBrush(c);
+            } 
+        }
+        public string PlayPause
+        {
+            get => timerRunning ? "Pause" : "Play";
+        }
         DispatcherTimer timer = new DispatcherTimer();
-        #endregion
         public MainPage()
         {
             this.ViewModel = new ViewModel();
@@ -85,34 +72,11 @@ namespace GameOfLife_UWP
             this.WebView.NavigationStarting += WebView_NavigationStarting;
             this.NameChangeModal.PointerReleased += CloseModal;
         }
-        #region Window and Async Events
-        /// <summary>
-        /// Event handler for when the window loads. Sets the data context to this whole class so properties are easily accessible in XAML
-        /// </summary>
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            DataContext = this;
-        }
-        /// <summary>
-        /// Gracefully unloads page by releasing Direct2D Canvas resources and removing from page
-        /// </summary>
-        private void Page_Unloaded(object sender, RoutedEventArgs e)
-        {
-            this.canvas.RemoveFromVisualTree();
-            this.canvas = null;
-        }
-
         private void Timer_Tick(object sender, object e)
         {
             this.ViewModel.universe.CalculateNextGeneration();
             this.canvas.Invalidate();
         }
-        private void Quit(object sender, RoutedEventArgs e)
-        {
-            Windows.ApplicationModel.Core.CoreApplication.Exit();
-        }
-        #endregion
-        #region Direct2D Canvas Events and Methods
         private ICanvasBrush LiveCell(CanvasControl c)
         {
             Color col = Colors.Chartreuse;
@@ -142,6 +106,19 @@ namespace GameOfLife_UWP
             }
             this.StatusBar.Text = this.ViewModel.StatusBar;
         }
+
+        private void Page_Unloaded(object sender, RoutedEventArgs e)
+        {
+            this.canvas.RemoveFromVisualTree();
+            this.canvas = null;
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.universe.Randomize();
+            this.canvas.Invalidate();
+        }
+
         private void canvas_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
             Point p = e.GetCurrentPoint(this.canvas).Position;
@@ -149,6 +126,49 @@ namespace GameOfLife_UWP
                 (int)(p.X / this.ViewModel.CellSize),
                 (int)(p.Y / this.ViewModel.CellSize)
                 );
+            this.canvas.Invalidate();
+        }
+
+        private void NewUniverse(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.universe = new Universe((int)this.NumberBoxWidth.Value, (int)this.NumberBoxHeight.Value, this.IsToroidalSwitch.IsOn);
+            ResizeGrid();
+            this.canvas.Invalidate();
+        }
+
+        private void CloseWebview(object sender, RoutedEventArgs e)
+        {
+            this.WebGrid.Visibility = Visibility.Collapsed;
+        }
+
+        private void PlayPause_Click(object sender, RoutedEventArgs e)
+        {
+            if (timerRunning)
+            {
+                timer.Stop();
+                this.PPBtn.Icon = new SymbolIcon(Symbol.Play);
+                this.PPBtn.Label = "Play";
+            }
+            else
+            {
+                this.PPBtn.Icon = new SymbolIcon(Symbol.Pause);
+                this.PPBtn.Label = "Pause";
+                timer.Start();
+            }
+            timerRunning = !timerRunning;
+        }
+
+        private void Previous_Click(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.universe.GoTo(this.ViewModel.universe.Current - 1);
+            this.canvas.Invalidate();
+        }
+
+        private void Next_Click(object sender, RoutedEventArgs e)
+        {
+            if (this.ViewModel.universe.Current == this.ViewModel.universe.TotalGenerations - 1)
+                this.ViewModel.universe.CalculateNextGeneration();
+            this.ViewModel.universe.GoTo(this.ViewModel.universe.Current + 1);
             this.canvas.Invalidate();
         }
         private void ResizeGrid()
@@ -159,8 +179,69 @@ namespace GameOfLife_UWP
             this.canvas.Height = GridHeight;
             this.canvas.Invalidate();
         }
-        #endregion
-        #region WebView Events
+        private void NewToroidal(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.universe = new Universe((int)this.NumberBoxWidth.Value, (int)this.NumberBoxHeight.Value, true);
+            ResizeGrid();
+            this.canvas.Invalidate();
+        }
+
+        private void NewFinite(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.universe = new Universe((int)this.NumberBoxWidth.Value, (int)this.NumberBoxHeight.Value, true);
+            ResizeGrid();
+            this.canvas.Invalidate();
+        }
+
+        private void ZoomIn(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.Zoom += 0.1;
+            ResizeGrid();
+            this.canvas.Invalidate();
+        }
+
+        private void ZoomOut(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.Zoom -= 0.1;
+            ResizeGrid();
+            this.canvas.Invalidate();
+        }
+
+        private void Randomize(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.universe.Randomize();
+            this.canvas.Invalidate();
+        }
+
+        private void ClearHistory(object sender, RoutedEventArgs e)
+        {
+            this.ViewModel.universe.ClearDiffMap();
+            this.canvas.Invalidate();
+        }
+
+        private void CloseModal(object sender, RoutedEventArgs e)
+        {
+            this.NameChangeModal.Visibility = Visibility.Collapsed;
+            this.UniverseNameBox.Text = uName;
+            this.UniverseDBox.Text = uDescription;
+        }
+        private void SaveModal(object sender, RoutedEventArgs e)
+        {
+            this.NameChangeModal.Visibility = Visibility.Collapsed;
+            uName = this.UniverseNameBox.Text;
+            uDescription = this.UniverseDBox.Text;
+        }
+        private void OpenModal(object sender, RoutedEventArgs e)
+        {
+            CloseModal(sender, e);
+            this.NameChangeModal.Visibility = Visibility.Visible;
+        }
+
+        private void OpenWebView(object sender, RoutedEventArgs e)
+        {
+            this.WebView.Navigate(new Uri("https://bitstorm.org/gameoflife/lexicon/"));
+            this.WebGrid.Visibility = Visibility.Visible;
+        }
         private async void WebView_NavigationStarting(object sender, WebViewNavigationStartingEventArgs args)
         {
             string host = args.Uri.Host;
@@ -202,95 +283,13 @@ namespace GameOfLife_UWP
                 {
 
                 }
-            }
-            else if (host == "bitstorm.org")
+            } else if (host == "bitstorm.org")
             {
                 return;
             }
             args.Cancel = true;
         }
-        private void CloseWebview(object sender, RoutedEventArgs e)
-        {
-            this.WebGrid.Visibility = Visibility.Collapsed;
-        }
-        private void OpenWebView(object sender, RoutedEventArgs e)
-        {
-            this.WebView.Navigate(new Uri("https://bitstorm.org/gameoflife/lexicon/"));
-            this.WebGrid.Visibility = Visibility.Visible;
-        }
-        #endregion
-        #region Button Events
-        private void PlayPause_Click(object sender, RoutedEventArgs e)
-        {
-            if (timerRunning)
-            {
-                timer.Stop();
-                this.PPBtn.Icon = new SymbolIcon(Symbol.Play);
-                this.PPBtn.Label = "Play";
-            }
-            else
-            {
-                this.PPBtn.Icon = new SymbolIcon(Symbol.Pause);
-                this.PPBtn.Label = "Pause";
-                timer.Start();
-            }
-            timerRunning = !timerRunning;
-        }
 
-        private void Previous_Click(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.universe.GoTo(this.ViewModel.universe.Current - 1);
-            this.canvas.Invalidate();
-        }
-
-        private void Next_Click(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.universe.GoTo(this.ViewModel.universe.Current - 1);
-            this.canvas.Invalidate();
-        }
-        private void NewToroidal(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.universe = new Universe(50, true);
-            ResizeGrid();
-            this.canvas.Invalidate();
-        }
-
-        private void NewFinite(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.universe = new Universe(50, false);
-            ResizeGrid();
-            this.canvas.Invalidate();
-        }
-        private void NewUniverse(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.universe = new Universe((int)this.NumberBoxWidth.Value, (int)this.NumberBoxHeight.Value, this.IsToroidalSwitch.IsOn);
-            ResizeGrid();
-            this.canvas.Invalidate();
-        }
-        private void ZoomIn(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.Zoom += 0.1;
-            ResizeGrid();
-            this.canvas.Invalidate();
-        }
-
-        private void ZoomOut(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.Zoom -= 0.1;
-            ResizeGrid();
-            this.canvas.Invalidate();
-        }
-
-        private void Randomize(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.universe.Randomize();
-            this.canvas.Invalidate();
-        }
-        private void ClearHistory(object sender, RoutedEventArgs e)
-        {
-            this.ViewModel.universe.ClearDiffMap();
-            this.canvas.Invalidate();
-        }
         private void AddSpeed(object sender, RoutedEventArgs e)
         {
             Speed = Math.Min(4000000, Speed + 100000);
@@ -355,27 +354,7 @@ namespace GameOfLife_UWP
             this.ViewModel.universe.LoadFromFile(lines, true);
             this.canvas.Invalidate();
         }
-        #endregion
-        #region Universe Details Modal Events and Methods
-        private void CloseModal(object sender, RoutedEventArgs e)
-        {
-            this.NameChangeModal.Visibility = Visibility.Collapsed;
-            this.UniverseNameBox.Text = uName;
-            this.UniverseDBox.Text = uDescription;
-        }
-        private void SaveModal(object sender, RoutedEventArgs e)
-        {
-            this.NameChangeModal.Visibility = Visibility.Collapsed;
-            uName = this.UniverseNameBox.Text;
-            uDescription = this.UniverseDBox.Text;
-        }
-        private void OpenModal(object sender, RoutedEventArgs e)
-        {
-            CloseModal(sender, e);
-            this.NameChangeModal.Visibility = Visibility.Visible;
-        }
-        #endregion
-        #region About Modal Events and Methods
+
         private void OpenAboutModal(object sender, RoutedEventArgs e)
         {
             this.AboutModal.Visibility = Visibility.Visible;
@@ -384,7 +363,11 @@ namespace GameOfLife_UWP
         {
             this.AboutModal.Visibility = Visibility.Collapsed;
         }
-        #endregion
+
+        private void Quit(object sender, RoutedEventArgs e)
+        {
+            Windows.ApplicationModel.Core.CoreApplication.Exit();
+        }
     }
     public class Prop<T>: INotifyPropertyChanged
     {
