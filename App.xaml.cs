@@ -40,7 +40,6 @@ namespace GameOfLife_UWP
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
             Frame rootFrame = Window.Current.Content as Frame;
-
             // Do not repeat app initialization when the Window already has content,
             // just ensure that the window is active
             if (rootFrame == null)
@@ -94,7 +93,11 @@ namespace GameOfLife_UWP
         {
             var deferral = e.SuspendingOperation.GetDeferral();
             //TODO: Save application state and stop any background activity
-            deferral.Complete();
+            // Try to save state 3 times
+            ((Window.Current.Content as Frame).Content as MainPage).vm.SaveToFile().ContinueWith((res) =>
+            {
+                deferral.Complete();
+            });
         }
     }
 }

@@ -7,19 +7,26 @@ using System.Xml;
 using System.Xml.Serialization;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using Windows.Storage.Pickers;
+using Windows.Storage;
 
 namespace GameOfLife_UWP
 {
     /// <summary>
     /// Wrapper class for the universe to encapsulate functionality and implement safety mechanisms
     /// </summary>
+    [Serializable]
     public class Universe
     {
-        #region Properties and Fields
+
         /// <summary>
-        /// 2D Array of cells. I'd like to note that it took every fiber of my being to not make this an array of bitsets to save on horizontal memory.
+        /// Delegate matching the signature of the other Count neighbor methods, following the same format as a function pointer (no lambda expressions in C#)
         /// </summary>
-        private bool[,] universe;
+        /// <param name="x">X coordinate on the grid</param>
+        /// <param name="y">Y coordinate on the grid</param>
+        /// <returns></returns>
+        private delegate byte CountNeighbors(int x, int y);
+        #region Properties and Fields
         /// <summary>
         /// Property which tracks the neighbor count for each cell.
         /// </summary>
@@ -28,8 +35,6 @@ namespace GameOfLife_UWP
             get
             {
                 byte[,] cnt = new byte[XLen, YLen];
-                CountNeighbors cn = CountNeighborsFinite;
-                if (IsToroidal) cn = CountNeighborsToroidal;
                 for(int y = 0; y < YLen; y++)
                 {
                     for (int x = 0; x < XLen; x++)
@@ -44,25 +49,24 @@ namespace GameOfLife_UWP
         /// <summary>
         /// Convenience method for acquiring the max X axis
         /// </summary>
-        public int XLen { get { return universe.GetLength(0); } }
+        public int XLen { get { return deltaT[0].GetLength(0); } }
         /// <summary>
         /// Convenience method for acquiring the max Y axis
         /// </summary>
-        public int YLen { get { return universe.GetLength(1); } }
+        public int YLen { get { return deltaT[0].GetLength(1); } }
         /// <summary>
         /// List of Diff maps. The list's Count also represents the total generations.
         /// </summary>
-        private List<DiffMap> deltaT;
+        private List<bool[,]> deltaT;
         /// <summary>
         /// public interface for acquiring the total number of generations
         /// </summary>
         public int TotalGenerations { get { return deltaT.Count; } }
 
-        private int current;
         /// <summary>
         /// Current generation. The DiffMap at this index has been applied to the universe
         /// </summary>
-        public int Current { get { return current; } private set { current = value; } }
+        public int Current { get; private set; }
         /// <summary>
         /// Computed property that returns the number of living cells at this generation
         /// </summary>
@@ -75,14 +79,37 @@ namespace GameOfLife_UWP
                 {
                     for (int x = 0; x < XLen; ++x)
                     {
-                        if (universe[x, y]) acc++;
+                        if (deltaT[Current][x, y]) acc++;
                     }
                 }
                 return acc;
             }
         }
 
+        public byte[,] neighbors
+        {
+            get
+            {
+                byte[,] n = new byte[XLen, YLen];
+                for (int x = 0; x < XLen; x++)
+                {
+                    for (int y = 0; y < YLen; y++)
+                    {
+                        n[x, y] = cn(x, y);
+                    }
+                }
+                return n;
+            }
+        }
+
         private bool isToroidal;
+        CountNeighbors cn { 
+            get
+            {
+                if (IsToroidal) return CountNeighborsToroidal;
+                else return CountNeighborsFinite;
+            } 
+        }
         /// <summary>
         /// Property which describes the neighbor counting algorithm for this universe (externally immutable)
         /// </summary>
@@ -93,16 +120,21 @@ namespace GameOfLife_UWP
         }
         #endregion
         #region Constructors
+        public Universe()
+        {
+            deltaT = new List<bool[,]>();
+            deltaT.Add(new bool[50, 50]);
+            IsToroidal = true;
+        }
         /// <summary>
         /// Shorthand constructor for building a square grid
         /// </summary>
         /// <param name="size">Dimension of the grid</param>
         /// <param name="isToroidal">Does the grid wrap around?</param>
-        public Universe(int size, bool isToroidal = false)
+        public Universe(int size, bool isToroidal = true)
         {
-            universe = new bool[size, size];
-            deltaT = new List<DiffMap>();
-            deltaT.Add(new DiffMap());
+            deltaT = new List<bool[,]>();
+            deltaT.Add(new bool[size, size]);
             this.IsToroidal = isToroidal;
         }
         /// <summary>
@@ -111,11 +143,10 @@ namespace GameOfLife_UWP
         /// <param name="x">X axis</param>
         /// <param name="y">Y axis</param>
         /// <param name="isToroidal"></param>
-        public Universe(int x, int y, bool isToroidal = false)
+        public Universe(int x, int y, bool isToroidal = true)
         {
-            universe = new bool[x, y];
-            deltaT = new List<DiffMap>();
-            deltaT.Add(new DiffMap());
+            deltaT = new List<bool[,]>();
+            deltaT.Add(new bool[x, y]);
             this.IsToroidal = isToroidal;
         }
         /// <summary>
@@ -131,17 +162,17 @@ namespace GameOfLife_UWP
         /// </summary>
         public bool this[int x, int y] { 
             get { 
-                return universe[x, y]; 
+                return deltaT[Current][x, y]; 
             } set { 
                 if (isToroidal)
                 {
                     // Allow imports to toroidal universe to wrap around grid
-                    universe[x % (XLen - 1), y % (YLen - 1)] = value;
+                    deltaT[Current][x % XLen, y % YLen] = value;
                 } else
                 {
                     // Otherwise Cull extraneous cells on import
                     if (x >= XLen || y >= YLen || x < 0 || y < 0) return;
-                    universe[x, y] = value;
+                    deltaT[Current][x, y] = value;
                 }
             }
         }
@@ -152,32 +183,24 @@ namespace GameOfLife_UWP
         /// <param name="generation">the specific point in time to travel to</param>
         public void GoTo(int generation)
         {
-            int direction = Current <= generation ? 1 : -1;
-            // Prevent user input from throwing index out of range exception
-            Math.Clamp(generation, 0, TotalGenerations - 1);
-            while (Current != generation)
+            if (generation >= TotalGenerations)
             {
-                // use iterator to safely guarantee proper order of execution
-                foreach (DiffMapInstruction i in deltaT[Current].iterator)
-                {
-                    // Depending on whether user is going back or forward, commit or revert that cell
-                    bool setTo = direction == -1 ? !i.WasBirth : i.WasBirth;
-                    universe[i.X, i.Y] = setTo;
-                }
-                Current += direction;
+                CalculateNextGeneration();
+                Current = TotalGenerations - 1;
+                return;
             }
-            // If going backwards, no need to go any further
-            if (direction == -1) return;
-            // If going forward, must commit all instructions at current index
-            foreach (DiffMapInstruction i in deltaT[current].iterator)
-            {
-                universe[i.X, i.Y] = i.WasBirth;
-            }
+            Current = generation;
         }
         /// <summary>
         /// Clears the diff map
         /// </summary>
-        public void ClearDiffMap() { deltaT = new List<DiffMap>(); deltaT.Add(new DiffMap()); Current = 0; }
+        public void ClearDiffMap()
+        {
+            int x = XLen; int y = YLen;
+            deltaT = new List<bool[,]>();
+            deltaT.Add(new bool[x, y]);
+            Current = 0;
+        }
         #endregion
         #region Rubric Compliant Methods
         /// <summary>
@@ -187,8 +210,8 @@ namespace GameOfLife_UWP
         /// <param name="y"></param>
         public void ClickCell(int x, int y)
         {
-            deltaT.Last().ToggleInstruction(x, y);
             GoTo(TotalGenerations - 1);
+            this[x, y] = !this[x, y];
         }
         /// <summary>
         /// Clears and generates a Random universe based on a seed
@@ -196,18 +219,16 @@ namespace GameOfLife_UWP
         /// <param name="seed">Optional: seed for the random generator (if null, uses time as seed)</param>
         public void Randomize(int? seed = null)
         {
-            Random rng = new Random(seed.HasValue ? seed.Value : (int)DateTime.Now.Ticks);
+            Random rng = new Random(seed ?? (int)DateTime.Now.Ticks);
             ClearDiffMap();
-            universe = new bool[XLen, YLen];
 
             for (int y = 0; y < YLen; y++)
             {
                 for (int x = 0; x < XLen; x++)
                 {
-                    if (rng.Next(3) == 0) deltaT[Current].Commit(x, y, true);
+                    if (rng.Next(3) == 0) this[x,y] = true;
                 }
             }
-            GoTo(0);
         }
         /// <summary>
         /// Count neighbors, allowing cells to fall off the edge of the grid
@@ -215,9 +236,9 @@ namespace GameOfLife_UWP
         /// <param name="x">X coordinate on the grid</param>
         /// <param name="y">Y coordinate on the grid</param>
         /// <returns></returns>
-        private int CountNeighborsFinite(int x, int y)
+        private byte CountNeighborsFinite(int x, int y)
         {
-            int count = 0;
+            byte count = 0;
             for (int yOffset = -1; yOffset <= 1; yOffset++)
             {
                 for (int xOffset = -1; xOffset <= 1; xOffset++)
@@ -231,7 +252,7 @@ namespace GameOfLife_UWP
                         xCheck >= XLen ||
                         yCheck >= YLen
                         ) continue;
-                    count += universe[xCheck, yCheck] ? 1 : 0;
+                    count += (byte)(deltaT[Current][xCheck, yCheck] ? 1 : 0);
                 }
             }
             return count;
@@ -242,9 +263,9 @@ namespace GameOfLife_UWP
         /// <param name="x">X coordinate on the grid</param>
         /// <param name="y">Y coordinate on the grid</param>
         /// <returns>Number of neighbors</returns>
-        private int CountNeighborsToroidal(int x, int y)
+        private byte CountNeighborsToroidal(int x, int y)
         {
-            int count = 0;
+            byte count = 0;
             for (int yOffset = -1; yOffset <= 1; yOffset++)
             {
                 for (int xOffset = -1; xOffset <= 1; xOffset++)
@@ -256,41 +277,34 @@ namespace GameOfLife_UWP
                     if (yCheck < 0) yCheck = YLen - 1;
                     if (xCheck >= XLen) xCheck = 0;
                     if (yCheck >= YLen) yCheck = 0;
-                    count += universe[xCheck, yCheck] ? 1 : 0;
+                    count += (byte)(deltaT[Current][xCheck, yCheck] ? 1 : 0);
                 }
             }
             return count;
         }
         /// <summary>
-        /// Delegate matching the signature of the other Count neighbor methods, following the same format as a function pointer (no lambda expressions in C#)
-        /// </summary>
-        /// <param name="x">X coordinate on the grid</param>
-        /// <param name="y">Y coordinate on the grid</param>
-        /// <returns></returns>
-        private delegate int CountNeighbors(int x, int y);
-        /// <summary>
         /// Count neighbors, taking whether the universe is toroidal or not into account.
         /// </summary>
         public void CalculateNextGeneration()
         {
-            CountNeighbors cn;
-            if (Current != TotalGenerations - 1) GoTo(TotalGenerations - 1);
-            if (IsToroidal) cn = CountNeighborsToroidal;
-            else cn = CountNeighborsFinite;
-            deltaT.Add(new DiffMap());
+            Current = TotalGenerations - 1;
+            deltaT.Add(new bool[XLen, YLen]);
+            deltaT[Current].CopyTo(deltaT.Last());
             for (int y = 0; y < YLen; y++)
             {
                 for (int x = 0; x < XLen; x++)
                 {
-                    int neighbors = cn(x, y);
-                    if (universe[x, y] && (neighbors < 2 || neighbors > 3)) deltaT.Last().Commit(x, y, false);
-                    if (!universe[x, y] && neighbors == 3) deltaT.Last().Commit(x, y, true);
+                    byte neighbors = cn(x, y);
+                    if (deltaT[Current][x, y] && (neighbors < 2 || neighbors > 3)) deltaT.Last()[x, y] = false;
+                    if (!deltaT[Current][x, y] && neighbors == 3) deltaT.Last()[x,y] = true;
                 }
             }
-            GoTo(TotalGenerations - 1);
+            Current++;
         }
-        public async void SaveToPlainText(Windows.Storage.Pickers.FileSavePicker picker, string name, string desc)
+        public async Task<bool> SaveToPlainText(StorageFile file, string name, string desc)
         {
+            if (file == null) return false;
+            CachedFileManager.DeferUpdates(file);
             StringBuilder sb = new StringBuilder();
             sb.Append("!Name: " + name + "\n!");
             foreach (string str in desc.Split('\n'))
@@ -302,18 +316,19 @@ namespace GameOfLife_UWP
             {
                 for (int x = 0; x < XLen; x++)
                 {
-                    if (universe[x, y]) sb.Append('O');
+                    if (this[x, y]) sb.Append('O');
                     else sb.Append('.');
                 }
                 sb.Append('\n');
             }
-            Windows.Storage.StorageFile file = await picker.PickSaveFileAsync();
-            if (file != null)
-            {
-                Windows.Storage.CachedFileManager.DeferUpdates(file);
-                await Windows.Storage.FileIO.WriteTextAsync(file, sb.ToString());
-                Windows.Storage.Provider.FileUpdateStatus status = await Windows.Storage.CachedFileManager.CompleteUpdatesAsync(file);
-            }
+            await FileIO.WriteTextAsync(file, sb.ToString());
+            await CachedFileManager.CompleteUpdatesAsync(file);
+            return true;
+        }
+        public async Task<bool> SaveToPlainText(FileSavePicker picker, string name, string desc)
+        {
+            StorageFile file = await picker.PickSaveFileAsync();
+            return await SaveToPlainText(file, name, desc);
         }
         public Tuple<string, string> LoadFromFile(List<string> lines, bool isImport)
         {
@@ -339,7 +354,9 @@ namespace GameOfLife_UWP
 
             if (!isImport)
             {
-                universe = new bool[inx, iny];
+                deltaT = new List<bool[,]>();
+                deltaT.Add(new bool[inx, iny]);
+                Current = 0;
             }
 
             for (int y = 0; y < iny; y++)
@@ -348,8 +365,8 @@ namespace GameOfLife_UWP
                 {
                     try
                     {
-                        if (lines[y][x] == 'O') universe[x, y] = true;
-                        else universe[x, y] = false;
+                        if (lines[y][x] == 'O') this[x, y] = true;
+                        else this[x, y] = false;
                     } catch (Exception) { }
                 }
             }
@@ -372,7 +389,7 @@ namespace GameOfLife_UWP
                 {
                     for (int x = 0; x < XLen; x++)
                     {
-                        sb.Append(universe[x, y] ? 'O' : '.');
+                        //sb.Append(universe[x, y] ? 'O' : '.');
                     }
                     if (y != YLen - 1) sb.Append('\n');
                 }
@@ -405,8 +422,20 @@ namespace GameOfLife_UWP
         }
         #endregion
     }
-
     #region Utility Classes
+    public static class Utilities
+    {
+        public static void CopyTo(this bool[,] from, bool[,] to)
+        {
+            for (int x = 0; x < from.GetLength(0); x++)
+            {
+                for (int y = 0; y < from.GetLength(1); y++)
+                {
+                    to[x, y] = from[x, y];
+                }
+            }
+        }
+    }
     /// <summary>
     /// Rather than storing each generation in their own array so you can "rewind" your game, create a diff map which stores changes to cells
     /// over time and group them by generation, thereby saving memory at the cost of slightly higher CPU cycles.

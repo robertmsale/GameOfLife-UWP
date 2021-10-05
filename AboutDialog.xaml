@@ -1,0 +1,53 @@
+﻿<ContentDialog
+    x:Class="GameOfLife_UWP.AboutDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:GameOfLife_UWP"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="About"
+    PrimaryButtonText="Close"
+    PrimaryButtonClick="ContentDialog_PrimaryButtonClick"
+    SecondaryButtonClick="ContentDialog_SecondaryButtonClick">
+
+    <ScrollViewer 
+                    Grid.Row="1" 
+                    Background="{ThemeResource MenuFlyoutItemFocusedBackgroundThemeBrush}"
+                    HorizontalScrollMode="Disabled"
+                    >
+        <StackPanel Padding="10" Width="460">
+            <TextBlock Text="Conway's Game of Life" FontSize="26"/>
+            <TextBlock>
+                            Author: Robert Sale
+            </TextBlock>
+            <TextBlock>
+                            License: MIT
+            </TextBlock>
+            <TextBlock/>
+            <TextBlock TextWrapping="Wrap">
+                            Description: This implementation of Conway's Game of Life is my project for Full Sail University, showcasing my ability to design and implement advanced algorithms and modern UI development.
+            </TextBlock>
+            <TextBlock/>
+            <TextBlock TextWrapping="Wrap">
+                            It has always been my dream to become a software engineer. It wasn't until recently that I started believing in my abilities. Not everybody hits the ground running right out of high school, but I am bound and determined to become a software engineer.
+            </TextBlock>
+            <TextBlock/>
+            <TextBlock>Dependencies:</TextBlock>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="30"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="1">
+                    <TextBlock>
+                                    - Windows.UI NuGet Package for legacy W10 support
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap">
+                                    - Win2D NuGet Package to support GPU accelerated vector graphics
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>
