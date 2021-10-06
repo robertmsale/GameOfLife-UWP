@@ -71,9 +71,8 @@ namespace GameOfLife_UWP
             UniverseWidthSlider.Value = vm.universe.XLen;
             UniverseHeightSlider.Value = vm.universe.YLen;
             timer.Interval = new TimeSpan(vm.Speed); // milliseconds
-            timer.Tick += Timer_Tick;
-            CurrentSpeedItem.Text = "Current Speed: "+(vm.Speed/1000)+"ms";
-            SpeedSlider.Value = (double)vm.Speed/1000;
+            CurrentSpeedItem.Text = "Current Speed: "+(vm.Speed/10000)+"ms";
+            SpeedSlider.Value = (double)vm.Speed/100;
             TC.IsChecked = vm.CurrentGenShown;
             TT.IsChecked = vm.TotalGensShown;
             TL.IsChecked = vm.LivingCellsShown;
@@ -131,7 +130,7 @@ namespace GameOfLife_UWP
 
         private void SpeedSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
-            vm.Speed = (int)e.NewValue * 1000;
+            vm.Speed = (int)e.NewValue * 10000;
             CurrentSpeedItem.Text = "Current Speed: "+ (int)e.NewValue + "ms";
             timer.Interval = new TimeSpan(vm.Speed);
             if (timer.IsEnabled)
@@ -151,9 +150,9 @@ namespace GameOfLife_UWP
             canvas.Invalidate();
         }
 
-        private void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
+        private async void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
         {
-
+            await colorModal.ShowAsync();
         }
     }
     public class Prop<T>: INotifyPropertyChanged

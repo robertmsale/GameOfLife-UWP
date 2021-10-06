@@ -50,6 +50,7 @@ namespace GameOfLife_UWP
         #region Modal Objects
         public AboutDialog aboutModal = new AboutDialog();
         public EditUniverseDialog editUniverseModal = new EditUniverseDialog();
+        public ColorDialog colorModal = new ColorDialog();
         #endregion
     }
 }

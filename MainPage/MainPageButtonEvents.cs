@@ -20,6 +20,7 @@ namespace GameOfLife_UWP
 
         private void Previous_Click(object sender, RoutedEventArgs e)
         {
+            if (vm.universe.Current == 0) return;
             vm.universe.GoTo(vm.universe.Current - 1);
             canvas.Invalidate();
         }

@@ -46,4 +46,14 @@ the payload so it can be imported directly into the universe.
 
 Usage: File -> Import -> From Web
 
-  2: 
+  2: Previous button
+
+It's fairly simple and I might not keep this button moving forward, but it's been 
+helpful in quickly observing patterns. 
+
+  3: Drag select cells - WIP
+
+This app will feature the ability to select a group of cells, cut/copy and paste 
+them so you can quickly build out repetitious patterns with minimal effort
+
+  4: 
