@@ -69,7 +69,7 @@
                 <ToggleMenuFlyoutItem x:Name="ShowNeighborsToggle" Text="Show Neighbors" Click="ShowNeighborsToggle_Click"/>
                 <ToggleMenuFlyoutItem x:Name="ShowGridToggle" Text="Show Grid" Click="ShowGridToggle_Click"/>
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Click="MenuFlyoutItem_Click" Text="Change Colors"/>
+                <MenuFlyoutItem Click="ShowColorModal" Text="Change Colors"/>
             </MenuBarItem>
             <MenuBarItem Title="Help">
                 <MenuFlyoutItem Text="About" Click="OpenAboutModal"/>
@@ -83,13 +83,15 @@
             HorizontalScrollBarVisibility="Visible"
             VerticalScrollBarVisibility="Visible">
 
-            <canvas:CanvasControl 
-                x:Name="canvas" 
+            <canvas:CanvasControl
+                x:Name="canvas"
                 Draw="canvas_Draw"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 PointerPressed="canvas_PointerPressed"
-                />
+                PointerMoved="canvas_PointerMoved"
+                PointerReleased="canvas_PointerReleased">
+            </canvas:CanvasControl>
         </ScrollViewer>
         <CommandBar HorizontalAlignment="Stretch" Grid.Row="2" Height="50" >
             <CommandBar.Content>
@@ -149,7 +151,7 @@
                                 x:Name="SpeedSlider"
                                 Width="200" 
                                 Minimum="100" 
-                                Maximum="10000"
+                                Maximum="5000"
                                 ValueChanged="SpeedSlider_ValueChanged"
                                 StepFrequency="100" />
                         </StackPanel>

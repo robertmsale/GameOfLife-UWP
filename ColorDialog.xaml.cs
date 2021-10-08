@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.UI;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -17,8 +18,24 @@ using Windows.UI.Xaml.Navigation;
 
 namespace GameOfLife_UWP
 {
+    
     public sealed partial class ColorDialog : ContentDialog
     {
+        public Color Living
+        {
+            get => LivingCellColorPicker.Color;
+            set => LivingCellColorPicker.Color = value;
+        }
+        public Color Dead
+        {
+            get => DeadCellColorPicker.Color;
+            set => DeadCellColorPicker.Color = value;
+        }
+        public Color Grid
+        {
+            get => GridColorPicker.Color;
+            set => GridColorPicker.Color = value;
+        }
         public ColorDialog()
         {
             this.InitializeComponent();

@@ -44,16 +44,32 @@ namespace GameOfLife_UWP
             vm.GridWidth = vm.CellSize * vm.universe.XLen;
             vm.GridHeight = vm.CellSize * vm.universe.YLen;
             InitializeComponent();
+            CanvasFontSize = canvas.FontSize;
+            colorModal.Living = Colors.Chartreuse;
+            colorModal.Dead = Colors.Black;
+            colorModal.Grid = Colors.Azure;
             canvas.Width = vm.GridWidth;
             canvas.Height = vm.GridHeight;
-            timer.Interval = new TimeSpan(10000000); // milliseconds
+            timer.Interval = new TimeSpan(0, 0, 0, 0, 1000); // milliseconds
             timer.Tick += Timer_Tick;
             CurrentSpeedItem.Text = "Current Speed: 1000ms";
-            SpeedSlider.Value = (double)10000000;
+            SpeedSlider.Value = (double)1000;
             WebView.NavigationStarting += WebView_NavigationStarting;
             TC.IsChecked = vm.CurrentGenShown;
             TT.IsChecked = vm.TotalGensShown;
             TL.IsChecked = vm.LivingCellsShown;
+
+            MenuFlyoutItem cut = new MenuFlyoutItem { Text = "Cut", Tag = "CanvasCut" };
+            MenuFlyoutItem copy = new MenuFlyoutItem { Text = "Copy", Tag = "CanvasCopy" };
+            MenuFlyoutItem paste = new MenuFlyoutItem { Text = "Paste", Tag = "CanvasPaste" };
+
+            cut.Click += CanvasCutClicked;
+            copy.Click += CanvasCopyClicked;
+            paste.Click += CanvasPasteClicked;
+
+            CanvasFlyout.Items.Add(cut);
+            CanvasFlyout.Items.Add(copy);
+            CanvasFlyout.Items.Add(paste);
         }
         #region Window and Async Events
         /// <summary>
@@ -66,13 +82,16 @@ namespace GameOfLife_UWP
             vm.GridWidth = vm.CellSize * vm.universe.XLen;
             vm.GridHeight = vm.CellSize * vm.universe.YLen;
             InitializeComponent();
+            colorModal.Living = vm.LiveCell;
+            colorModal.Dead = vm.DeadCell;
+            colorModal.Grid = vm.GridColor;
             canvas.Width = vm.GridWidth;
             canvas.Height = vm.GridHeight;
             UniverseWidthSlider.Value = vm.universe.XLen;
             UniverseHeightSlider.Value = vm.universe.YLen;
-            timer.Interval = new TimeSpan(vm.Speed); // milliseconds
-            CurrentSpeedItem.Text = "Current Speed: "+(vm.Speed/10000)+"ms";
-            SpeedSlider.Value = (double)vm.Speed/100;
+            timer.Interval = new TimeSpan(0, 0, 0, 0, vm.Speed);
+            CurrentSpeedItem.Text = "Current Speed: "+vm.Speed+"ms";
+            SpeedSlider.Value = vm.Speed;
             TC.IsChecked = vm.CurrentGenShown;
             TT.IsChecked = vm.TotalGensShown;
             TL.IsChecked = vm.LivingCellsShown;
@@ -142,18 +161,33 @@ namespace GameOfLife_UWP
 
         private void ShowNeighborsToggle_Click(object sender, RoutedEventArgs e)
         {
+            vm.NeighborsShown = ShowNeighborsToggle.IsChecked;
             canvas.Invalidate();
         }
 
         private void ShowGridToggle_Click(object sender, RoutedEventArgs e)
         {
+            vm.GridShown = ShowGridToggle.IsChecked;
             canvas.Invalidate();
         }
 
-        private async void MenuFlyoutItem_Click(object sender, RoutedEventArgs e)
+        private async void ShowColorModal(object sender, RoutedEventArgs e)
         {
-            await colorModal.ShowAsync();
+            var res = await colorModal.ShowAsync();
+            if (res == ContentDialogResult.Primary)
+            {
+                vm.LiveCell = colorModal.Living;
+                vm.DeadCell = colorModal.Dead;
+                vm.GridColor = colorModal.Grid;
+                canvas.Invalidate();
+            } else
+            {
+                colorModal.Living = vm.LiveCell;
+                colorModal.Dead = vm.DeadCell;
+                colorModal.Grid = vm.GridColor;
+            }
         }
+
     }
     public class Prop<T>: INotifyPropertyChanged
     {

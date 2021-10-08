@@ -131,6 +131,11 @@ namespace GameOfLife_UWP
 
                 v.Speed = (int)jo.GetNamedNumber("speed");
 
+                v.universe = new Universe(
+                    (int)jo.GetNamedNumber("uWidth"),
+                    (int)jo.GetNamedNumber("uHeight"),
+                    jo.GetNamedBoolean("isToroidal"));
+
             } catch (Exception)
             {
                 await file.DeleteAsync();
@@ -173,6 +178,10 @@ namespace GameOfLife_UWP
             jo.Add("uDescription", JsonValue.CreateStringValue(uDescription));
 
             jo.Add("speed", JsonValue.CreateNumberValue(Speed));
+
+            jo.Add("uWidth", JsonValue.CreateNumberValue(universe.XLen));
+            jo.Add("uHeight", JsonValue.CreateNumberValue(universe.YLen));
+            jo.Add("isToroidal", JsonValue.CreateBooleanValue(universe.IsToroidal));
 
             await FileIO.WriteTextAsync(file, jo.Stringify());
 
