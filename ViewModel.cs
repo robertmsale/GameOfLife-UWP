@@ -20,6 +20,7 @@ namespace GameOfLife_UWP
     [Serializable]
     public class ViewModel
     {
+        // Most of these are self documenting
         public Color LiveCell;
         public Color DeadCell;
         public Color GridColor;
@@ -49,6 +50,9 @@ namespace GameOfLife_UWP
         /// </summary>
         public string FilePath;
         public int CellSize { get => (int)(_CellSize * Zoom); }
+        /// <summary>
+        /// Uses View Model state to determine what text should appear in the status bar
+        /// </summary>
         public string StatusBarText { 
             get {
                 StringBuilder sb = new StringBuilder();
@@ -89,17 +93,28 @@ namespace GameOfLife_UWP
             Speed = 100000;
             FilePath = "";
         }
+        /// <summary>
+        /// Helper method for extracting color value from Factory load method
+        /// </summary>
+        /// <param name="jo">The JSON object from file</param>
+        /// <param name="c">The color reference from the view model in factory</param>
         private static void GetColorFromStream(JsonObject jo, ref Color c)
         {
             c.R = (byte)jo.GetNamedNumber("r");
             c.G = (byte)jo.GetNamedNumber("g");
             c.B = (byte)jo.GetNamedNumber("b");
         }
+        /// <summary>
+        /// Async Factory method for safely loading the View Model from file after the window has been loaded
+        /// </summary>
+        /// <returns>Threaded task containing the ViewModel object loaded from file</returns>
         public static async Task<ViewModel> Factory()
         {
+            // Get app data local folder
             StorageFolder folder = ApplicationData.Current.LocalFolder;
             StorageFile file;
             ViewModel v = new();
+            // Safely get file
             try
             {
                 file = await folder.GetFileAsync("settings.json");
@@ -109,6 +124,7 @@ namespace GameOfLife_UWP
             }
             if (file == null) return new ViewModel();
 
+            // If problems occur at any time, break out and delete existing file (because it's corrupted)
             try
             {
                 JsonObject jo = JsonObject.Parse(await FileIO.ReadTextAsync(file));
@@ -142,7 +158,11 @@ namespace GameOfLife_UWP
             }
             return v;
         }
-
+        /// <summary>
+        /// Helper method for Saving color properties to file as JSON objects
+        /// </summary>
+        /// <param name="c">The color reference of the exisitng view model</param>
+        /// <returns>The JSON object containing the color data</returns>
         private JsonObject AddColorToBuffer(ref Color c)
         {
             JsonObject obj = new();
@@ -151,9 +171,15 @@ namespace GameOfLife_UWP
             obj.Add("b", JsonValue.CreateNumberValue(c.B));
             return obj;
         }
+        /// <summary>
+        /// Async serialization method for View Model
+        /// </summary>
+        /// <returns>integer indicating success</returns>
         public async Task<int> SaveToFile()
         {
+            // Get app data local folder
             StorageFolder folder = ApplicationData.Current.LocalFolder;
+            // Safely get file from folder (replace existing)
             StorageFile file;
             file = await folder.CreateFileAsync("settings.json", CreationCollisionOption.ReplaceExisting);
             if (file == null) return 1;

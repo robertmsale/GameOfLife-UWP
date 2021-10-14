@@ -14,6 +14,7 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Page.Resources>
+        <!--Contains the resource dictionary for certain acrylic backdrop effects-->
         <ResourceDictionary>
             <media:AcrylicBrush 
                 x:Key="CustomAcrylic"
@@ -35,21 +36,23 @@
                 />
         </ResourceDictionary>
     </Page.Resources>
+    <!--Main page element is a grid, where the rows are split by their height values-->
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <!--Top menu bar row-->
             <RowDefinition Height="40"/>
+            <!--Content row (canvas grid and import from web view)-->
             <RowDefinition Height="*"/>
+            <!--Bottom app bar row-->
             <RowDefinition Height="46"/>
         </Grid.RowDefinitions>
+        <!--Menu bar Declaration-->
         <MenuBar Grid.Row="0">
             <MenuBarItem Title="File">
-                <MenuFlyoutSubItem Text="New Grid">
-                    <MenuFlyoutItem Text="Toroidal" Click="NewToroidal"/>
-                    <MenuFlyoutItem Text="Finite" Click="NewFinite"/>
-                </MenuFlyoutSubItem>
+                <!--<MenuFlyoutItem Text="New Grid" Click="NewUniverse" />-->
                 <MenuFlyoutItem Text="Open" Click="FileLoad"/>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Save" Click="FileSave"/>
@@ -60,6 +63,10 @@
                 </MenuFlyoutSubItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Quit" Click="Quit"/>
+            </MenuBarItem>
+            <MenuBarItem Title="Settings">
+                <MenuFlyoutItem Text="Reload Saved Settings" Click="ReloadSaved_Click"/>
+                <MenuFlyoutItem Text="Restore Defaults" Click="RestoreDefaults_Click"/>
             </MenuBarItem>
             <MenuBarItem Title="View">
                 <ToggleMenuFlyoutItem x:Name="TC" Click="ToggleCurrent" Text="Show Current Generation"/>
@@ -75,6 +82,7 @@
                 <MenuFlyoutItem Text="About" Click="OpenAboutModal"/>
             </MenuBarItem>
         </MenuBar>
+        <!--Canvas is wrapped in scroll viewer so that it can be zoomed-->
         <ScrollViewer 
             Grid.Row="1" 
             Background="{ThemeResource CustomAcrylic}"
@@ -93,6 +101,7 @@
                 PointerReleased="canvas_PointerReleased">
             </canvas:CanvasControl>
         </ScrollViewer>
+        <!--Command bar row-->
         <CommandBar HorizontalAlignment="Stretch" Grid.Row="2" Height="50" >
             <CommandBar.Content>
                 <TextBlock x:Name="StatusBar" Margin="10, 10, 0, 0" />
@@ -162,6 +171,7 @@
 
             </AppBarButton>
         </CommandBar>
+        <!--Web view exists in the same row as the canvas, but its visibility is toggled-->
         <Grid 
             Grid.Row="1" 
             Width="900" 
@@ -173,11 +183,13 @@
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="65"/>
             </Grid.RowDefinitions>
+            <!--Big ol' cancel button-->
             <Grid Background="{ThemeResource AppBarBackgroundThemeBrush}">
                 <Button Background="Maroon" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Click="CloseWebview">
                     <TextBlock Text="Cancel"/>
                 </Button>
             </Grid>
+            <!--The actual webview-->
             <WebView 
             x:Name="WebView"
             Width="900"
@@ -189,6 +201,7 @@
                     </TransitionCollection>
                 </WebView.Transitions>
             </WebView>
+            <!--A couple of number boxes to adjust the imported position-->
             <Grid Grid.Row="2" Background="{ThemeResource MenuFlyoutItemFocusedBackgroundThemeBrush}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

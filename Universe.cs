@@ -49,11 +49,47 @@ namespace GameOfLife_UWP
         /// <summary>
         /// Convenience method for acquiring the max X axis
         /// </summary>
-        public int XLen { get { return deltaT[0].GetLength(0); } }
+        public int XLen { 
+            get { 
+                return deltaT[0].GetLength(0); 
+            }
+            set
+            {
+                if (value <= 0) return;
+                bool[,] nu = new bool[value, YLen];
+                for (int x = 0; x < Math.Min(value, XLen); x++)
+                {
+                    for (int y = 0; y < YLen; y++)
+                    {
+                        nu[x, y] = deltaT.Last()[x, y];
+                    }
+                }
+                deltaT = new();
+                deltaT.Add(nu);
+            }
+        }
         /// <summary>
         /// Convenience method for acquiring the max Y axis
         /// </summary>
-        public int YLen { get { return deltaT[0].GetLength(1); } }
+        public int YLen { 
+            get { 
+                return deltaT[0].GetLength(1); 
+            } 
+            set
+            {
+                if (value <= 0) return;
+                bool[,] nu = new bool[XLen, value];
+                for (int x = 0; x < XLen; x++)
+                {
+                    for (int y = 0; y < Math.Min(YLen, value); y++)
+                    {
+                        nu[x, y] = deltaT.Last()[x, y];
+                    }
+                }
+                deltaT = new();
+                deltaT.Add(nu);
+            }
+        }
         /// <summary>
         /// List of Diff maps. The list's Count also represents the total generations.
         /// </summary>
@@ -300,6 +336,23 @@ namespace GameOfLife_UWP
                 }
             }
             Current++;
+        }
+
+        public void ResizeUniverse(int? x, int? y)
+        {
+            if (!x.HasValue && !y.HasValue) return;
+            int nx = x ?? XLen;
+            int ny = y ?? YLen;
+            bool[,] nu = new bool[nx, ny];
+            for (int ix = 0; ix < Math.Min(nx, XLen); ix++)
+            {
+                for (int iy = 0; iy < Math.Min(ny, YLen); iy++)
+                {
+                    nu[ix, iy] = deltaT[Current][ix, iy];
+                }
+            }
+            deltaT.Clear();
+            deltaT.Add(nu);
         }
         public async Task<bool> SaveToPlainText(StorageFile file, string name, string desc)
         {

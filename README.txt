@@ -55,5 +55,3 @@ helpful in quickly observing patterns.
 
 This app will feature the ability to select a group of cells, cut/copy and paste 
 them so you can quickly build out repetitious patterns with minimal effort
-
-  4: 

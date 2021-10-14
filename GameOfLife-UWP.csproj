@@ -133,10 +133,13 @@
     <Compile Include="MainPage\MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="MainPage\MainPageAboutModal.cs" />
     <Compile Include="MainPage\MainPageButtonEvents.cs" />
     <Compile Include="MainPage\MainPageCanvas.cs" />
     <Compile Include="MainPage\MainPageProps.cs" />
+    <Compile Include="MainPage\MainPageUniverseModal.cs" />
     <Compile Include="MainPage\MainPageWebView.cs" />
+    <Compile Include="MainPage\MainPageWindowEvents.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Universe.cs" />
     <Compile Include="ViewModel.cs" />
@@ -155,6 +158,7 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="README.txt" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
